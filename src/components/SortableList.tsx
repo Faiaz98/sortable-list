@@ -1,73 +1,80 @@
-import {
-  useRef,
-  useState,
-  useEffect,
-} from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import { useRef, useState } from "react";
 
-const initialItems = ["Apple", "Banana", "Cherry", "Date", "Elderberry"];
+const initialItems = ["🍕 Pizza", "🍔 Burger", "🍣 Sushi", "🥗 Salad", "🍩 Donut"];
 
-export const SortableList = () => {
+export function SortableList() {
   const [items, setItems] = useState(initialItems);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
-
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
-  useEffect(() => {
-    if (dragIndex !== null && overIndex !== null && dragIndex !== overIndex) {
-      const updated = [...items];
-      const [moved] = updated.splice(dragIndex, 1);
-      updated.splice(overIndex, 0, moved);
-      setItems(updated);
-      setDragIndex(overIndex); // update new dragIndex
+  const handlePointerDown = (e: React.PointerEvent, index: number) => {
+    const target = e.currentTarget as HTMLLIElement;
+    const startY = e.clientY;
+    const originalIndex = index;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const dy = moveEvent.clientY - startY;
+
+      // find hover target
+      const hoverIndex = itemRefs.current.findIndex((el, i) => {
+        if (!el || i === originalIndex) return false;
+        const rect = el.getBoundingClientRect();
+        return moveEvent.clientY > rect.top && moveEvent.clientY < rect.bottom;
+      });
+
+      if (hoverIndex !== -1 && hoverIndex !== originalIndex) {
+        setItems((prev) => {
+          const updated = [...prev];
+          [updated[originalIndex], updated[hoverIndex]] = [updated[hoverIndex], updated[originalIndex]];
+          return updated;
+        });
+      }
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === "ArrowUp" && index > 0) {
+      swap(index, index - 1);
+      setTimeout(() => itemRefs.current[index - 1]?.focus(), 0);
     }
-  }, [overIndex]);
 
-  const handlePointerDown = (index: number) => {
-    setDragIndex(index);
-    window.addEventListener("pointerup", handlePointerUp);
+    if (e.key === "ArrowDown" && index < items.length - 1) {
+      swap(index, index + 1);
+      setTimeout(() => itemRefs.current[index + 1]?.focus(), 0);
+    }
   };
 
-  const handlePointerUp = () => {
-    setDragIndex(null);
-    setOverIndex(null);
-    window.removeEventListener("pointerup", handlePointerUp);
-  };
-
-  const handlePointerMove = (e: ReactPointerEvent) => {
-    if (dragIndex === null) return;
-    const clientY = e.clientY;
-    const newOver = itemRefs.current.findIndex((item) => {
-      if (!item) return false;
-      const rect = item.getBoundingClientRect();
-      return clientY > rect.top && clientY < rect.bottom;
+  const swap = (i: number, j: number) => {
+    setItems((prev) => {
+      const newItems = [...prev];
+      [newItems[i], newItems[j]] = [newItems[j], newItems[i]];
+      return newItems;
     });
-    if (newOver !== -1 && newOver !== dragIndex) {
-      setOverIndex(newOver);
-    }
   };
 
   return (
-    <ul
-      className="max-w-md mx-auto p-4 space-y-2"
-      onPointerMove={handlePointerMove}
-    >
+    <ul className="space-y-2 max-w-md mx-auto mt-10">
       {items.map((item, index) => (
         <li
           key={item}
           ref={(el) => {
-  itemRefs.current[index] = el;
-}}
-
-          className={`flex items-center justify-between p-3 rounded shadow bg-white transition-all duration-150 ${
-            dragIndex === index ? "opacity-40" : ""
-          }`}
-          onPointerDown={() => handlePointerDown(index)}
+            itemRefs.current[index] = el;
+          }}
+          tabIndex={0}
+          className="p-4 border rounded shadow cursor-move bg-white focus:outline-blue-500"
+          onPointerDown={(e) => handlePointerDown(e, index)}
+          onKeyDown={(e) => handleKeyDown(e, index)}
         >
-          <span className="cursor-grab">{item}</span>
+          {item}
         </li>
       ))}
     </ul>
   );
-};
+}
