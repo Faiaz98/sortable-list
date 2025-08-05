@@ -1,9 +1,10 @@
-const App = () => {
+import { SortableList } from "./components/SortableList";
+
+export default function App() {
   return (
-    <main className="min-h-screen flex items-center justify-center text-xl">
-      <p className="text-gray-500">🚧 Sortable List coming soon...</p>
+    <main className="min-h-screen bg-gray-100 p-8">
+      <h1 className="text-2xl font-bold mb-6 text-center">Sortable List</h1>
+      <SortableList />
     </main>
   );
-};
-
-export default App;
+}
